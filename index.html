@@ -30,12 +30,21 @@
   }
   .cell-date {
     width: 100%;
+    box-sizing: content-box;
     text-align: center;
     font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.03em;
     color: #444;
+    line-height: 1.25;
+    min-height: 2.5em;        /* always two lines' worth of space */
+    display: flex;
+    align-items: center;      /* text sits centred in that space */
+    justify-content: center;
     padding: 6px 0 3px;
+  }
+  .fc-daygrid-day-events {
+    margin-top: 0 !important;
   }
   .fc-day-today .cell-date { color: #1a73e8; }
   .fc-day-today { background-color: #eaf1fd !important; }
