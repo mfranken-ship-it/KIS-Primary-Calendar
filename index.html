@@ -4,28 +4,64 @@
 <meta charset="UTF-8">
 <style>
   html, body { margin: 0; padding: 0; background: transparent; font-family: Arial, sans-serif; }
-  #calendar { max-width: 700px; margin: 0 auto; }
+  #calendar { max-width: 900px; margin: 0 auto; }
+
+  /* Custom date label inside each cell */
+  .cell-date {
+    text-align: center;
+    font-size: 0.75em;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+    color: #444;
+    padding: 6px 0 2px;
+  }
+
+  /* Today's cell gets a subtle highlight */
+  .fc-day-today .cell-date {
+    color: #1a73e8;
+  }
+  .fc-day-today {
+    background-color: #eaf1fd !important;
+  }
+
+  /* Event pill styling, matching the purple bars in your screenshot */
+  .fc-event {
+    background-color: #7986cb;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 4px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
 <div id="calendar"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" data-plugin="google-calendar"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');
     const calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'listTwoWeeks',
+      initialView: 'twoWeekGrid',
       views: {
-        listTwoWeeks: {
-          type: 'list',
-          duration: { days: 14 }
+        twoWeekGrid: {
+          type: 'dayGrid',
+          duration: { weeks: 2 }
         }
       },
+      firstDay: 1,        // weeks start Monday
+      weekends: false,    // hide Sat/Sun columns
+      dayHeaders: false,  // hide the "Mon/Tue/.." header row — we render it per-cell instead
       headerToolbar: false,
       height: 'auto',
+      eventDisplay: 'block',
+      dayCellContent: function(arg) {
+        const weekday = arg.date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+        const day = arg.date.getDate();
+        const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
+        return { html: `<div class="cell-date">${weekday} ${day} ${month}</div>` };
+      },
       googleCalendarApiKey: 'AIzaSyAIUj3e_xOfu-z8TvBSTAtbWTOcWlvxwc8',
       events: {
         googleCalendarId: 'c_51642eb914ce9f3dfeb13a9c07b9d7cc7e2dc6478e6d63d0d7fe9edfd18b9b3c@group.calendar.google.com'
