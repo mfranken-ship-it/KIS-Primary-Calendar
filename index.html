@@ -24,13 +24,10 @@
     border-radius: 4px;
     padding: 2px 4px;
     text-align: center;
+    cursor: default;          /* no longer looks clickable */
   }
 
-  /* Toggle link */
-  #toggle-weeks-wrap {
-    text-align: center;
-    margin-top: 10px;
-  }
+  #toggle-weeks-wrap { text-align: center; margin-top: 10px; }
   #toggle-weeks {
     display: inline-flex;
     align-items: center;
@@ -46,16 +43,9 @@
     border-radius: 4px;
     transition: background-color 0.15s ease;
   }
-  #toggle-weeks:hover {
-    background-color: #eef0fb;
-  }
-  #toggle-weeks .chevron {
-    display: inline-block;
-    transition: transform 0.2s ease;
-  }
-  #toggle-weeks.expanded .chevron {
-    transform: rotate(180deg);
-  }
+  #toggle-weeks:hover { background-color: #eef0fb; }
+  #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
+  #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
 </style>
 </head>
 <body>
@@ -70,39 +60,44 @@
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
+<script src="config.js"></script>
 <script>
-  // ── Config ──────────────────────────────────────────
-  const API_KEY = 'AIzaSyAIUj3e_xOfu-z8TvBSTAtbWTOcWlvxwc8';
-  const CALENDAR_ID = 'c_51642eb914ce9f3dfeb13a9c07b9d7cc7e2dc6478e6d63d0d7fe9edfd18b9b3c@group.calendar.google.com';
-  // ────────────────────────────────────────────────────
-
   document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');
     const toggleBtn = document.getElementById('toggle-weeks');
 
     // Monday of the current week
     const today = new Date();
-    const dow = today.getDay(); // 0=Sun..6=Sat
-    const diffToMonday = dow === 0 ? -6 : 1 - dow;
+    const dow = today.getDay();                      // 0=Sun .. 6=Sat
     const monday = new Date(today);
-    monday.setDate(today.getDate() + diffToMonday);
+    monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
+    monday.setHours(0, 0, 0, 0);
 
-    // Base weeks: 2 normally, 3 on Thursday or Friday
+    // 3 rows on Thursday (4) and Friday (5), otherwise 2
     const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
     let extraWeeks = 0;
+
+    function rangeFor(weeks) {
+      const end = new Date(monday);
+      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
+      return { start: monday, end: end };
+    }
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'weekGrid',
       views: {
-        weekGrid: { type: 'dayGrid', duration: { weeks: baseWeeks } }
+        weekGrid: { type: 'dayGrid' }                // no duration → visibleRange drives it
       },
-      initialDate: monday,
+      visibleRange: rangeFor(baseWeeks),
       firstDay: 1,
       weekends: false,
       dayHeaders: false,
       headerToolbar: false,
       height: 'auto',
       eventDisplay: 'block',
+      eventClick: function(info) {
+        info.jsEvent.preventDefault();               // don't open Google Calendar
+      },
       dayCellContent: function(arg) {
         const weekday = arg.date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
         const day = arg.date.getDate();
@@ -117,10 +112,9 @@
     toggleBtn.addEventListener('click', function() {
       const expanded = toggleBtn.classList.toggle('expanded');
       extraWeeks = expanded ? 2 : 0;
-      calendar.setOption('duration', { weeks: baseWeeks + extraWeeks });
-      toggleBtn.querySelector('.label').textContent = expanded
-        ? 'Show fewer weeks'
-        : 'Show 2 more weeks';
+      calendar.setOption('visibleRange', rangeFor(baseWeeks + extraWeeks));
+      toggleBtn.querySelector('.label').textContent =
+        expanded ? 'Show fewer weeks' : 'Show 2 more weeks';
     });
   });
 </script>
