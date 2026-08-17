@@ -3,21 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  html, body { margin: 0; padding: 0; background: transparent; font-family: Arial, sans-serif; }
-  #calendar { max-width: 900px; margin: 0 auto; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  /* Single font stack + base size for everything inside the grid */
+  #calendar {
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+  }
+  #calendar .fc,
+  #calendar .fc * {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Override FullCalendar's row-reverse flex so the date can centre */
+  .fc-daygrid-day-top {
+    display: block !important;
+  }
 
   .cell-date {
+    width: 100%;
     text-align: center;
-    font-size: 0.75em;
+    font-size: 12px;
     font-weight: bold;
     letter-spacing: 0.03em;
     color: #444;
-    padding: 6px 0 2px;
+    padding: 6px 0 3px;
   }
 
   .fc-day-today .cell-date { color: #1a73e8; }
   .fc-day-today { background-color: #eaf1fd !important; }
 
+  /* Day pill — unchanged in look, now with an explicit size */
   .fc-event {
     background-color: #7986cb;
     border: none;
@@ -25,26 +47,42 @@
     padding: 2px 4px;
     text-align: center;
     cursor: default;
+    font-size: 13px;
+  }
+  .fc-event .fc-event-title,
+  .fc-event .fc-event-main {
+    font-size: 13px;
+    font-weight: normal;
   }
 
-  /* Specialist pills */
+  /* Specialists — Google Calendar style dot + plain text */
   .specialists {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin: 3px 2px 4px;
+    gap: 1px;
+    margin: 4px 2px 4px;
   }
-  .spec-pill {
-    border-radius: 3px;
-    color: #fff;
-    font-size: 0.63em;
-    font-weight: bold;
-    line-height: 1.35;
-    padding: 2px 4px;
-    text-align: center;
+  .spec-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #202124;
+    padding: 0 2px;
+  }
+  .spec-dot {
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
   }
 
-  #toggle-weeks-wrap { text-align: center; margin-top: 10px; }
+  #toggle-weeks-wrap {
+    text-align: center;
+    margin-top: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
   #toggle-weeks {
     display: inline-flex;
     align-items: center;
@@ -52,7 +90,8 @@
     border: none;
     background: none;
     color: #3f51b5;
-    font-size: 0.85em;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 0.02em;
     cursor: pointer;
@@ -83,11 +122,10 @@
     const calendarEl = document.getElementById('calendar');
     const toggleBtn = document.getElementById('toggle-weeks');
 
-    let gradeData = null;   // populated if ?grade=N resolves to a file
+    let gradeData = null;
 
-    // ── Date helpers ───────────────────────────────────
     const today = new Date();
-    const dow = today.getDay();                      // 0=Sun .. 6=Sat
+    const dow = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
     monday.setHours(0, 0, 0, 0);
@@ -106,7 +144,6 @@
              String(d.getDate()).padStart(2, '0');
     }
 
-    // ── Specialist rendering ───────────────────────────
     function renderSpecialists() {
       document.querySelectorAll('.specialists').forEach(el => el.remove());
       if (!gradeData) return;
@@ -131,11 +168,20 @@
           const subjects = rota[key];
           if (!subjects || !subjects.length) return;
           const cls = gradeData.classes[key];
-          const pill = document.createElement('div');
-          pill.className = 'spec-pill';
-          pill.style.backgroundColor = cls.colour;
-          pill.textContent = cls.label + ': ' + subjects.join(', ');
-          wrap.appendChild(pill);
+
+          const row = document.createElement('div');
+          row.className = 'spec-row';
+
+          const dot = document.createElement('span');
+          dot.className = 'spec-dot';
+          dot.style.backgroundColor = cls.colour;
+
+          const text = document.createElement('span');
+          text.textContent = cls.label + ': ' + subjects.join(', ');
+
+          row.appendChild(dot);
+          row.appendChild(text);
+          wrap.appendChild(row);
           any = true;
         });
 
@@ -143,7 +189,6 @@
       });
     }
 
-    // ── Calendar ───────────────────────────────────────
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'weekGrid',
       views: { weekGrid: { type: 'dayGrid' } },
@@ -167,7 +212,6 @@
     });
     calendar.render();
 
-    // ── Grade data (silent if absent) ──────────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
     if (grade && /^[0-9]+$/.test(grade)) {
       fetch('grade' + grade + '.json')
@@ -180,11 +224,10 @@
         .catch(function() { /* silent */ });
     }
 
-    // ── Toggle ─────────────────────────────────────────
     toggleBtn.addEventListener('click', function() {
       const expanded = toggleBtn.classList.toggle('expanded');
       calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
-      calendar.refetchEvents();          // ← the fix for empty extra rows
+      calendar.refetchEvents();
       toggleBtn.querySelector('.label').textContent =
         expanded ? 'Show fewer weeks' : 'Show 2 more weeks';
     });
