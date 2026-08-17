@@ -5,13 +5,13 @@
     "C": { "label": "1C", "colour": "#4A148C" }
   },
   "rotation": {
-    "1": { "A": ["PE"],             "B": [],                "C": ["Library"] },
-    "2": { "A": ["Library"],        "B": ["PE"],            "C": [] },
-    "3": { "A": ["PE", "Library"],  "B": ["Library"],       "C": ["PE"] },
-    "4": { "A": [],                 "B": ["PE"],            "C": ["Library"] },
-    "5": { "A": ["Library"],        "B": [],                "C": ["PE"] },
-    "6": { "A": ["PE"],             "B": ["Library"],       "C": [] },
-    "7": { "A": [],                 "B": ["PE", "Library"], "C": ["Library"] },
-    "8": { "A": ["Library"],        "B": [],                "C": ["PE"] }
+    "1": { "A": ["Library"], "B": ["Library"], "C": ["Library"] },
+    "2": { "A": ["PE"],      "B": ["PE"],      "C": ["PE"] },
+    "3": { "A": [],          "B": ["Library"], "C": [] },
+    "4": { "A": ["PE"],      "B": ["PE"],      "C": ["PE"] },
+    "5": { "A": ["Library"], "B": [],          "C": ["Library"] },
+    "6": { "A": ["PE"],      "B": ["PE"],      "C": ["PE"] },
+    "7": { "A": [],          "B": [],          "C": [] },
+    "8": { "A": ["PE"],      "B": ["PE"],      "C": ["PE"] }
   }
 }
