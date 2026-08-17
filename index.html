@@ -60,20 +60,20 @@
     font-weight: normal;
   }
 
-/* Specialists — dot + plain text, centred, with breathing room */
+  /* Specialists — dot + plain text, centred, with breathing room */
   .specialists {
     display: flex;
     flex-direction: column;
-    gap: 14px;          /* space BETWEEN classes — was 7px */
+    gap: 14px;
     margin: 10px 2px;
   }
   .spec-row {
     display: flex;
-    align-items: flex-start;   /* dot pins to the first line, not the middle */
+    align-items: flex-start;
     justify-content: center;
     gap: 6px;
     font-size: 15px;
-    line-height: 1.15;         /* tightens the two halves of a wrapped line */
+    line-height: 1.15;
     color: #202124;
     padding: 0 2px;
     text-align: center;
@@ -83,7 +83,7 @@
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    margin-top: 4px;           /* optically centres the dot on line one */
+    margin-top: 4px;
   }
 
   #toggle-weeks-wrap {
@@ -130,19 +130,21 @@
     const calendarEl = document.getElementById('calendar');
     const toggleBtn = document.getElementById('toggle-weeks');
 
-    let gradeData = null;
+    let gradeData = null;   // populated if ?grade=N resolves to a file
 
+    // ── Date helpers ───────────────────────────────────
     const today = new Date();
-    const dow = today.getDay();
+    const dow = today.getDay();                      // 0=Sun .. 6=Sat
     const monday = new Date(today);
     monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
     monday.setHours(0, 0, 0, 0);
 
+    // 3 week-rows on Thursday (4) and Friday (5), otherwise 2
     const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
 
     function rangeFor(weeks) {
       const end = new Date(monday);
-      end.setDate(monday.getDate() + weeks * 7);
+      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
       return { start: monday, end: end };
     }
 
@@ -152,6 +154,7 @@
              String(d.getDate()).padStart(2, '0');
     }
 
+    // ── Specialist rendering ───────────────────────────
     function renderSpecialists() {
       document.querySelectorAll('.specialists').forEach(el => el.remove());
       if (!gradeData) return;
@@ -197,6 +200,7 @@
       });
     }
 
+    // ── Calendar ───────────────────────────────────────
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'weekGrid',
       views: { weekGrid: { type: 'dayGrid' } },
@@ -220,6 +224,7 @@
     });
     calendar.render();
 
+    // ── Grade data (silent if absent) ──────────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
     if (grade && /^[0-9]+$/.test(grade)) {
       fetch('grade' + grade + '.json')
@@ -232,6 +237,7 @@
         .catch(function() { /* silent */ });
     }
 
+    // ── Toggle ─────────────────────────────────────────
     toggleBtn.addEventListener('click', function() {
       const expanded = toggleBtn.classList.toggle('expanded');
       calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
