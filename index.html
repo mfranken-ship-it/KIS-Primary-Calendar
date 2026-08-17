@@ -60,20 +60,20 @@
     font-weight: normal;
   }
 
-  /* Specialists — dot + plain text, centred, with breathing room */
+/* Specialists — dot + plain text, centred, with breathing room */
   .specialists {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    margin: 8px 2px;
+    gap: 14px;          /* space BETWEEN classes — was 7px */
+    margin: 10px 2px;
   }
   .spec-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;   /* dot pins to the first line, not the middle */
     justify-content: center;
     gap: 6px;
     font-size: 15px;
-    line-height: 1.4;
+    line-height: 1.15;         /* tightens the two halves of a wrapped line */
     color: #202124;
     padding: 0 2px;
     text-align: center;
@@ -83,6 +83,7 @@
     width: 9px;
     height: 9px;
     border-radius: 50%;
+    margin-top: 4px;           /* optically centres the dot on line one */
   }
 
   #toggle-weeks-wrap {
