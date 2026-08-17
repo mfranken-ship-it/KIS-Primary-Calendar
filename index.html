@@ -222,6 +222,23 @@
       height: 'auto',
       eventDisplay: 'block',
       eventClick: function(info) { info.jsEvent.preventDefault(); },
+      eventContent: function(arg) {
+        const title = arg.event.title || '';
+        const idx = title.indexOf(':');
+        const wrap = document.createElement('div');
+        if (idx === -1) {
+          wrap.textContent = title;
+        } else {
+          const num = document.createElement('span');
+          num.textContent = title.slice(0, idx);
+          const desc = document.createElement('span');
+          desc.className = 'day-desc';
+          desc.textContent = title.slice(idx + 1).trim();
+          wrap.appendChild(num);
+          wrap.appendChild(desc);
+        }
+        return { domNodes: [wrap] };
+      },
       dayCellContent: function(arg) {
         const weekday = arg.date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
         const day = arg.date.getDate();
