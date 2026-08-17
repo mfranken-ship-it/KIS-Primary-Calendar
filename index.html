@@ -8,7 +8,6 @@
     padding: 0;
     background: transparent;
   }
-
   #calendar {
     max-width: 900px;
     margin: 0 auto;
@@ -19,19 +18,16 @@
   #calendar .fc * {
     font-family: Arial, Helvetica, sans-serif;
   }
-
   /* Override FullCalendar's row-reverse flex so the date can centre */
   .fc-daygrid-day-top {
     display: block !important;
   }
-
   /* Centre everything inside every cell */
   .fc-daygrid-day-frame,
   .fc-daygrid-day-events,
   .fc-daygrid-event-harness {
     text-align: center;
   }
-
   .cell-date {
     width: 100%;
     text-align: center;
@@ -41,10 +37,8 @@
     color: #444;
     padding: 6px 0 3px;
   }
-
   .fc-day-today .cell-date { color: #1a73e8; }
   .fc-day-today { background-color: #eaf1fd !important; }
-
   .fc-event {
     background-color: #7986cb;
     border: none;
@@ -59,7 +53,23 @@
     font-size: 16px;
     font-weight: normal;
   }
-
+  /* Let day pills wrap instead of clipping long titles */
+  .fc-daygrid-event,
+  .fc-event,
+  .fc-event-main,
+  .fc-event-title {
+    white-space: normal !important;
+    overflow: visible;
+    overflow-wrap: break-word;
+  }
+  .fc-daygrid-event-harness { overflow: visible; }
+  /* Description after the colon, e.g. "Day 0: Two-Way Conferences" */
+  .day-desc {
+    display: block;
+    font-size: 13px;
+    line-height: 1.25;
+    margin-top: 2px;
+  }
   /* Specialists — dot + plain text, centred, with breathing room */
   .specialists {
     display: flex;
@@ -85,7 +95,6 @@
     border-radius: 50%;
     margin-top: 4px;
   }
-
   #toggle-weeks-wrap {
     text-align: center;
     margin-top: 12px;
@@ -111,6 +120,7 @@
   #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
   #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
 </style>
+  
 </head>
 <body>
 
