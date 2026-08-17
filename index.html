@@ -6,7 +6,6 @@
   html, body { margin: 0; padding: 0; background: transparent; font-family: Arial, sans-serif; }
   #calendar { max-width: 900px; margin: 0 auto; }
 
-  /* Custom date label inside each cell */
   .cell-date {
     text-align: center;
     font-size: 0.75em;
@@ -16,15 +15,9 @@
     padding: 6px 0 2px;
   }
 
-  /* Today's cell gets a subtle highlight */
-  .fc-day-today .cell-date {
-    color: #1a73e8;
-  }
-  .fc-day-today {
-    background-color: #eaf1fd !important;
-  }
+  .fc-day-today .cell-date { color: #1a73e8; }
+  .fc-day-today { background-color: #eaf1fd !important; }
 
-  /* Event pill styling, matching the purple bars in your screenshot */
   .fc-event {
     background-color: #7986cb;
     border: none;
@@ -32,27 +25,81 @@
     padding: 2px 4px;
     text-align: center;
   }
+
+  /* Toggle link */
+  #toggle-weeks-wrap {
+    text-align: center;
+    margin-top: 10px;
+  }
+  #toggle-weeks {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    color: #3f51b5;
+    font-size: 0.85em;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+  }
+  #toggle-weeks:hover {
+    background-color: #eef0fb;
+  }
+  #toggle-weeks .chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  #toggle-weeks.expanded .chevron {
+    transform: rotate(180deg);
+  }
 </style>
 </head>
 <body>
+
 <div id="calendar"></div>
+<div id="toggle-weeks-wrap">
+  <button id="toggle-weeks">
+    <span class="label">Show 2 more weeks</span>
+    <span class="chevron">▾</span>
+  </button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
 <script>
+  // ── Config ──────────────────────────────────────────
+  const API_KEY = 'AIzaSyAIUj3e_xOfu-z8TvBSTAtbWTOcWlvxwc8';
+  const CALENDAR_ID = 'c_51642eb914ce9f3dfeb13a9c07b9d7cc7e2dc6478e6d63d0d7fe9edfd18b9b3c@group.calendar.google.com';
+  // ────────────────────────────────────────────────────
+
   document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');
+    const toggleBtn = document.getElementById('toggle-weeks');
+
+    // Monday of the current week
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMonday);
+
+    // Base weeks: 2 normally, 3 on Thursday or Friday
+    const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
+    let extraWeeks = 0;
+
     const calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'twoWeekGrid',
+      initialView: 'weekGrid',
       views: {
-        twoWeekGrid: {
-          type: 'dayGrid',
-          duration: { weeks: 2 }
-        }
+        weekGrid: { type: 'dayGrid', duration: { weeks: baseWeeks } }
       },
-      firstDay: 1,        // weeks start Monday
-      weekends: false,    // hide Sat/Sun columns
-      dayHeaders: false,  // hide the "Mon/Tue/.." header row — we render it per-cell instead
+      initialDate: monday,
+      firstDay: 1,
+      weekends: false,
+      dayHeaders: false,
       headerToolbar: false,
       height: 'auto',
       eventDisplay: 'block',
@@ -62,12 +109,19 @@
         const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
         return { html: `<div class="cell-date">${weekday} ${day} ${month}</div>` };
       },
-      googleCalendarApiKey: 'AIzaSyAIUj3e_xOfu-z8TvBSTAtbWTOcWlvxwc8',
-      events: {
-        googleCalendarId: 'c_51642eb914ce9f3dfeb13a9c07b9d7cc7e2dc6478e6d63d0d7fe9edfd18b9b3c@group.calendar.google.com'
-      }
+      googleCalendarApiKey: API_KEY,
+      events: { googleCalendarId: CALENDAR_ID }
     });
     calendar.render();
+
+    toggleBtn.addEventListener('click', function() {
+      const expanded = toggleBtn.classList.toggle('expanded');
+      extraWeeks = expanded ? 2 : 0;
+      calendar.setOption('duration', { weeks: baseWeeks + extraWeeks });
+      toggleBtn.querySelector('.label').textContent = expanded
+        ? 'Show fewer weeks'
+        : 'Show 2 more weeks';
+    });
   });
 </script>
 </body>
