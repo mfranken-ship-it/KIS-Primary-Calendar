@@ -9,12 +9,11 @@
     background: transparent;
   }
 
-  /* Single font stack + base size for everything inside the grid */
   #calendar {
     max-width: 900px;
     margin: 0 auto;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 16px;
   }
   #calendar .fc,
   #calendar .fc * {
@@ -26,10 +25,17 @@
     display: block !important;
   }
 
+  /* Centre everything inside every cell */
+  .fc-daygrid-day-frame,
+  .fc-daygrid-day-events,
+  .fc-daygrid-event-harness {
+    text-align: center;
+  }
+
   .cell-date {
     width: 100%;
     text-align: center;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.03em;
     color: #444;
@@ -39,7 +45,6 @@
   .fc-day-today .cell-date { color: #1a73e8; }
   .fc-day-today { background-color: #eaf1fd !important; }
 
-  /* Day pill — unchanged in look, now with an explicit size */
   .fc-event {
     background-color: #7986cb;
     border: none;
@@ -47,40 +52,42 @@
     padding: 2px 4px;
     text-align: center;
     cursor: default;
-    font-size: 13px;
+    font-size: 16px;
   }
   .fc-event .fc-event-title,
   .fc-event .fc-event-main {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: normal;
   }
 
-  /* Specialists — Google Calendar style dot + plain text */
+  /* Specialists — dot + plain text, centred, with breathing room */
   .specialists {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    margin: 4px 2px 4px;
+    gap: 7px;
+    margin: 8px 2px;
   }
   .spec-row {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    line-height: 1.5;
+    justify-content: center;
+    gap: 6px;
+    font-size: 15px;
+    line-height: 1.4;
     color: #202124;
     padding: 0 2px;
+    text-align: center;
   }
   .spec-dot {
-    flex: 0 0 8px;
-    width: 8px;
-    height: 8px;
+    flex: 0 0 9px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
   }
 
   #toggle-weeks-wrap {
     text-align: center;
-    margin-top: 10px;
+    margin-top: 12px;
     font-family: Arial, Helvetica, sans-serif;
   }
   #toggle-weeks {
@@ -91,7 +98,7 @@
     background: none;
     color: #3f51b5;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: bold;
     letter-spacing: 0.02em;
     cursor: pointer;
