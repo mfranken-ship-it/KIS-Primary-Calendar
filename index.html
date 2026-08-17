@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  
 <style>
   html, body {
     margin: 0;
@@ -18,36 +19,57 @@
   #calendar .fc * {
     font-family: Arial, Helvetica, sans-serif;
   }
-  /* Override FullCalendar's row-reverse flex so the date can centre */
-  .fc-daygrid-day-top {
-    display: block !important;
-  }
-  /* Centre everything inside every cell */
-  .fc-daygrid-day-frame,
-  .fc-daygrid-day-events,
-  .fc-daygrid-event-harness {
+
+  /* ── Cell structure & alignment ─────────────────── */
+  .fc-daygrid-day-frame {
+    display: flex;
+    flex-direction: column;
     text-align: center;
   }
+  /* Override row-reverse flex + kill FullCalendar's spacing */
+  .fc-daygrid-day-top {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .fc-daygrid-day-number {
+    display: block !important;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .fc-daygrid-day-events {
+    flex: 1 1 auto;
+    text-align: center;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  .fc-daygrid-event-harness {
+    text-align: center;
+    overflow: visible;
+  }
+
+  /* ── Date label ─────────────────────────────────── */
   .cell-date {
     width: 100%;
-    box-sizing: content-box;
+    box-sizing: border-box;
+    height: 3em;                /* fixed height keeps every pill on one line */
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.03em;
-    color: #444;
     line-height: 1.25;
-    min-height: 2.5em;        /* always two lines' worth of space, bump to 3.75em if 2 lines is not enough */
-    display: flex;
-    align-items: center;      /* text sits centred in that space */
-    justify-content: center;
-    padding: 6px 0 3px;
-  }
-  .fc-daygrid-day-events {
-    margin-top: 0 !important;
+    color: #444;
+    padding: 4px 0 2px;
   }
   .fc-day-today .cell-date { color: #1a73e8; }
   .fc-day-today { background-color: #eaf1fd !important; }
+
+  /* ── Day pills ──────────────────────────────────── */
   .fc-event {
     background-color: #7986cb;
     border: none;
@@ -62,7 +84,7 @@
     font-size: 16px;
     font-weight: normal;
   }
-  /* Let day pills wrap instead of clipping long titles */
+  /* Let pills wrap instead of clipping long titles */
   .fc-daygrid-event,
   .fc-event,
   .fc-event-main,
@@ -71,7 +93,6 @@
     overflow: visible;
     overflow-wrap: break-word;
   }
-  .fc-daygrid-event-harness { overflow: visible; }
   /* Description after the colon, e.g. "Day 0: Two-Way Conferences" */
   .day-desc {
     display: block;
@@ -79,7 +100,8 @@
     line-height: 1.25;
     margin-top: 2px;
   }
-  /* Specialists — dot + plain text, centred, with breathing room */
+
+  /* ── Specialists — dot + plain text ─────────────── */
   .specialists {
     display: flex;
     flex-direction: column;
@@ -104,6 +126,8 @@
     border-radius: 50%;
     margin-top: 4px;
   }
+
+  /* ── Toggle ─────────────────────────────────────── */
   #toggle-weeks-wrap {
     text-align: center;
     margin-top: 12px;
