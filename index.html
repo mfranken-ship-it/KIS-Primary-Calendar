@@ -24,7 +24,24 @@
     border-radius: 4px;
     padding: 2px 4px;
     text-align: center;
-    cursor: default;          /* no longer looks clickable */
+    cursor: default;
+  }
+
+  /* Specialist pills */
+  .specialists {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 3px 2px 4px;
+  }
+  .spec-pill {
+    border-radius: 3px;
+    color: #fff;
+    font-size: 0.63em;
+    font-weight: bold;
+    line-height: 1.35;
+    padding: 2px 4px;
+    text-align: center;
   }
 
   #toggle-weeks-wrap { text-align: center; margin-top: 10px; }
@@ -66,28 +83,70 @@
     const calendarEl = document.getElementById('calendar');
     const toggleBtn = document.getElementById('toggle-weeks');
 
-    // Monday of the current week
+    let gradeData = null;   // populated if ?grade=N resolves to a file
+
+    // ── Date helpers ───────────────────────────────────
     const today = new Date();
     const dow = today.getDay();                      // 0=Sun .. 6=Sat
     const monday = new Date(today);
     monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
     monday.setHours(0, 0, 0, 0);
 
-    // 3 rows on Thursday (4) and Friday (5), otherwise 2
     const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
-    let extraWeeks = 0;
 
     function rangeFor(weeks) {
       const end = new Date(monday);
-      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
+      end.setDate(monday.getDate() + weeks * 7);
       return { start: monday, end: end };
     }
 
+    function isoLocal(d) {
+      return d.getFullYear() + '-' +
+             String(d.getMonth() + 1).padStart(2, '0') + '-' +
+             String(d.getDate()).padStart(2, '0');
+    }
+
+    // ── Specialist rendering ───────────────────────────
+    function renderSpecialists() {
+      document.querySelectorAll('.specialists').forEach(el => el.remove());
+      if (!gradeData) return;
+
+      calendar.getEvents().forEach(function(ev) {
+        const match = (ev.title || '').match(/day\s*(\d+)/i);
+        if (!match || !ev.start) return;
+
+        const rota = gradeData.rotation[match[1]];
+        if (!rota) return;
+
+        const cell = document.querySelector(
+          '.fc-daygrid-day[data-date="' + isoLocal(ev.start) + '"] .fc-daygrid-day-events'
+        );
+        if (!cell) return;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'specialists';
+        let any = false;
+
+        Object.keys(gradeData.classes).forEach(function(key) {
+          const subjects = rota[key];
+          if (!subjects || !subjects.length) return;
+          const cls = gradeData.classes[key];
+          const pill = document.createElement('div');
+          pill.className = 'spec-pill';
+          pill.style.backgroundColor = cls.colour;
+          pill.textContent = cls.label + ': ' + subjects.join(', ');
+          wrap.appendChild(pill);
+          any = true;
+        });
+
+        if (any) cell.appendChild(wrap);
+      });
+    }
+
+    // ── Calendar ───────────────────────────────────────
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'weekGrid',
-      views: {
-        weekGrid: { type: 'dayGrid' }                // no duration → visibleRange drives it
-      },
+      views: { weekGrid: { type: 'dayGrid' } },
       visibleRange: rangeFor(baseWeeks),
       firstDay: 1,
       weekends: false,
@@ -95,24 +154,37 @@
       headerToolbar: false,
       height: 'auto',
       eventDisplay: 'block',
-      eventClick: function(info) {
-        info.jsEvent.preventDefault();               // don't open Google Calendar
-      },
+      eventClick: function(info) { info.jsEvent.preventDefault(); },
       dayCellContent: function(arg) {
         const weekday = arg.date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
         const day = arg.date.getDate();
         const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
-        return { html: `<div class="cell-date">${weekday} ${day} ${month}</div>` };
+        return { html: '<div class="cell-date">' + weekday + ' ' + day + ' ' + month + '</div>' };
       },
+      eventsSet: function() { setTimeout(renderSpecialists, 0); },
       googleCalendarApiKey: API_KEY,
       events: { googleCalendarId: CALENDAR_ID }
     });
     calendar.render();
 
+    // ── Grade data (silent if absent) ──────────────────
+    const grade = new URLSearchParams(window.location.search).get('grade');
+    if (grade && /^[0-9]+$/.test(grade)) {
+      fetch('grade' + grade + '.json')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data) return;
+          gradeData = data;
+          renderSpecialists();
+        })
+        .catch(function() { /* silent */ });
+    }
+
+    // ── Toggle ─────────────────────────────────────────
     toggleBtn.addEventListener('click', function() {
       const expanded = toggleBtn.classList.toggle('expanded');
-      extraWeeks = expanded ? 2 : 0;
-      calendar.setOption('visibleRange', rangeFor(baseWeeks + extraWeeks));
+      calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
+      calendar.refetchEvents();          // ← the fix for empty extra rows
       toggleBtn.querySelector('.label').textContent =
         expanded ? 'Show fewer weeks' : 'Show 2 more weeks';
     });
