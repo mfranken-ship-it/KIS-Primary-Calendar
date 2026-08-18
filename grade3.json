@@ -1,0 +1,17 @@
+{
+  "classes": {
+    "A": { "label": "3A", "colour": "#8E2323" },
+    "B": { "label": "3B", "colour": "#1B5E20" },
+    "C": { "label": "3C", "colour": "#4A148C" }
+  },
+  "rotation": {
+    "1": { "A": [],                  "B": [],              "C": [] },
+    "2": { "A": ["PE"],              "B": ["PE"],          "C": ["PE"] },
+    "3": { "A": [],                  "B": [],              "C": [] },
+    "4": { "A": ["PE", "Library"],   "B": ["PE"],          "C": ["PE"] },
+    "5": { "A": [],                  "B": ["Library"],     "C": ["Library"] },
+    "6": { "A": ["PE"],              "B": ["PE"],          "C": ["PE"] },
+    "7": { "A": [],                  "B": [],              "C": [] },
+    "8": { "A": ["PE", "Library"],   "B": ["PE", "Library"], "C": ["PE", "Library"] }
+  }
+}
