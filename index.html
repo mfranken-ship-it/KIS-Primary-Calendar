@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-  
 <style>
   html, body {
     margin: 0;
@@ -20,13 +19,57 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
+  /* ── Class filter pills ─────────────────────────── */
+  #class-filter {
+    display: none;                 /* shown only when grade data loads */
+    max-width: 900px;
+    margin: 0 auto 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  #class-filter .filter-label {
+    font-size: 14px;
+    color: #5f6368;
+    margin-right: 2px;
+  }
+  .class-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    padding: 5px 14px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .class-pill[aria-pressed="false"] {
+    background-color: #fff !important;
+    color: #80868b;
+    border-color: #dadce0;
+  }
+  .class-pill .pill-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+  .class-pill[aria-pressed="false"] .pill-dot {
+    background-color: #dadce0;
+  }
+
   /* ── Cell structure & alignment ─────────────────── */
   .fc-daygrid-day-frame {
     display: flex;
     flex-direction: column;
     text-align: center;
   }
-  /* Override row-reverse flex + kill FullCalendar's spacing */
   .fc-daygrid-day-top {
     display: block !important;
     padding: 0 !important;
@@ -53,7 +96,7 @@
   .cell-date {
     width: 100%;
     box-sizing: border-box;
-    height: 3em;                /* fixed height keeps every pill on one line */
+    height: 3em;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -84,7 +127,6 @@
     font-size: 16px;
     font-weight: normal;
   }
-  /* Let pills wrap instead of clipping long titles */
   .fc-daygrid-event,
   .fc-event,
   .fc-event-main,
@@ -93,7 +135,6 @@
     overflow: visible;
     overflow-wrap: break-word;
   }
-  /* Description after the colon, e.g. "Day 0: Two-Way Conferences" */
   .day-desc {
     display: block;
     font-size: 13px;
@@ -153,10 +194,10 @@
   #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
   #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
 </style>
-  
 </head>
 <body>
 
+<div id="class-filter"></div>
 <div id="calendar"></div>
 <div id="toggle-weeks-wrap">
   <button id="toggle-weeks">
@@ -167,27 +208,28 @@
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=1"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');
     const toggleBtn = document.getElementById('toggle-weeks');
+    const filterEl = document.getElementById('class-filter');
 
-    let gradeData = null;   // populated if ?grade=N resolves to a file
+    let gradeData = null;
+    let activeClasses = new Set();   // which class keys are currently shown
 
     // ── Date helpers ───────────────────────────────────
     const today = new Date();
-    const dow = today.getDay();                      // 0=Sun .. 6=Sat
+    const dow = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
     monday.setHours(0, 0, 0, 0);
 
-    // 3 week-rows on Thursday (4) and Friday (5), otherwise 2
     const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
 
     function rangeFor(weeks) {
       const end = new Date(monday);
-      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
+      end.setDate(monday.getDate() + weeks * 7);
       return { start: monday, end: end };
     }
 
@@ -195,6 +237,44 @@
       return d.getFullYear() + '-' +
              String(d.getMonth() + 1).padStart(2, '0') + '-' +
              String(d.getDate()).padStart(2, '0');
+    }
+
+    // ── Filter pills ───────────────────────────────────
+    function buildFilter() {
+      if (!gradeData) return;
+      filterEl.innerHTML = '';
+
+      const label = document.createElement('span');
+      label.className = 'filter-label';
+      label.textContent = 'Show / hide:';
+      filterEl.appendChild(label);
+
+      Object.keys(gradeData.classes).forEach(function(key) {
+        const cls = gradeData.classes[key];
+        const pill = document.createElement('button');
+        pill.className = 'class-pill';
+        pill.type = 'button';
+        pill.setAttribute('aria-pressed', 'true');
+        pill.style.backgroundColor = cls.colour;
+
+        const dot = document.createElement('span');
+        dot.className = 'pill-dot';
+        const text = document.createElement('span');
+        text.textContent = cls.label;
+        pill.appendChild(dot);
+        pill.appendChild(text);
+
+        pill.addEventListener('click', function() {
+          const on = pill.getAttribute('aria-pressed') === 'true';
+          pill.setAttribute('aria-pressed', on ? 'false' : 'true');
+          if (on) { activeClasses.delete(key); } else { activeClasses.add(key); }
+          renderSpecialists();
+        });
+
+        filterEl.appendChild(pill);
+      });
+
+      filterEl.style.display = 'flex';
     }
 
     // ── Specialist rendering ───────────────────────────
@@ -219,6 +299,7 @@
         let any = false;
 
         Object.keys(gradeData.classes).forEach(function(key) {
+          if (!activeClasses.has(key)) return;        // hidden by filter
           const subjects = rota[key];
           if (!subjects || !subjects.length) return;
           const cls = gradeData.classes[key];
@@ -287,11 +368,13 @@
     // ── Grade data (silent if absent) ──────────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
     if (grade && /^[0-9]+$/.test(grade)) {
-      fetch('grade' + grade + '.json')
+      fetch('grade' + grade + '.json?v=1')
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
           if (!data) return;
           gradeData = data;
+          activeClasses = new Set(Object.keys(data.classes));   // all on by default
+          buildFilter();
           renderSpecialists();
         })
         .catch(function() { /* silent */ });
@@ -307,5 +390,3 @@
     });
   });
 </script>
-</body>
-</html>
