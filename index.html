@@ -19,9 +19,9 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* ── Class filter pills ─────────────────────────── */
+  /* ── Filter bar ─────────────────────────────────── */
   #class-filter {
-    display: none;                 /* shown only when grade data loads */
+    display: none;
     max-width: 900px;
     margin: 0 auto 12px;
     align-items: center;
@@ -35,6 +35,7 @@
     color: #5f6368;
     margin-right: 2px;
   }
+  #class-filter .sib-label { margin-left: 10px; }
   .class-pill {
     display: inline-flex;
     align-items: center;
@@ -60,8 +61,27 @@
     border-radius: 50%;
     background-color: #fff;
   }
-  .class-pill[aria-pressed="false"] .pill-dot {
-    background-color: #dadce0;
+  .class-pill[aria-pressed="false"] .pill-dot { background-color: #dadce0; }
+
+  .sib-select {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    padding: 5px 8px;
+    border: 1px solid #dadce0;
+    border-radius: 16px;
+    background-color: #fff;
+    color: #202124;
+    cursor: pointer;
+  }
+  .sib-select:disabled {
+    color: #b0b3b8;
+    background-color: #f5f5f5;
+    cursor: default;
+  }
+  .sib-select.chosen {
+    font-weight: bold;
+    color: #fff;
+    border-color: transparent;
   }
 
   /* ── Cell structure & alignment ─────────────────── */
@@ -142,7 +162,7 @@
     margin-top: 2px;
   }
 
-  /* ── Specialists — dot + plain text ─────────────── */
+  /* ── Specialists ────────────────────────────────── */
   .specialists {
     display: flex;
     flex-direction: column;
@@ -215,23 +235,30 @@
     const toggleBtn = document.getElementById('toggle-weeks');
     const filterEl = document.getElementById('class-filter');
 
-    let gradeData = null;
-    let activeClasses = new Set();   // which class keys are currently shown
-    let isolated = null;             // class key currently isolated, or null for "all"
+    // Colours for added sibling classes, in order of selection
+    const SIBLING_COLOURS = ['#E65100', '#0277BD'];
+
+    let manifest = [];        // [{id, label, file}]
+    let allGrades = {};       // gradeId -> parsed JSON
+    let currentGradeId = null;
+    let isolated = null;      // class key in current grade, or null = show all
+    let siblings = [];        // [{gradeId, key}] — up to 2
+
+    const pills = {};
+    let sibSelects = [];
 
     // ── Date helpers ───────────────────────────────────
     const today = new Date();
-    const dow = today.getDay();                      // 0=Sun .. 6=Sat
+    const dow = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
     monday.setHours(0, 0, 0, 0);
 
-    // 3 week-rows on Thursday (4) and Friday (5), otherwise 2
     const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
 
     function rangeFor(weeks) {
       const end = new Date(monday);
-      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
+      end.setDate(monday.getDate() + weeks * 7);
       return { start: monday, end: end };
     }
 
@@ -241,9 +268,97 @@
              String(d.getDate()).padStart(2, '0');
     }
 
-    // ── Filter pills ───────────────────────────────────
+    // ── Which classes are currently displayed ──────────
+    function currentSelections() {
+      const out = [];
+      const gd = allGrades[currentGradeId];
+      if (!gd) return out;
+
+      if (isolated === null) {
+        Object.keys(gd.classes).forEach(function(k) {
+          out.push({ gradeId: currentGradeId, key: k,
+                     label: gd.classes[k].label, colour: gd.classes[k].colour });
+        });
+      } else {
+        out.push({ gradeId: currentGradeId, key: isolated,
+                   label: gd.classes[isolated].label,
+                   colour: gd.classes[isolated].colour });
+        siblings.forEach(function(s, i) {
+          const sg = allGrades[s.gradeId];
+          if (!sg || !sg.classes[s.key]) return;
+          out.push({ gradeId: s.gradeId, key: s.key,
+                     label: sg.classes[s.key].label,
+                     colour: SIBLING_COLOURS[i] || SIBLING_COLOURS[0] });
+        });
+      }
+      return out;
+    }
+
+    // ── Sibling dropdowns ──────────────────────────────
+    function populateSibSelects() {
+      sibSelects.forEach(function(sel, idx) {
+        // Only show dropdown 2 once dropdown 1 has a choice
+        if (idx > 0 && siblings.length < idx) {
+          sel.style.display = 'none';
+          return;
+        }
+        sel.style.display = (isolated === null) ? 'none' : '';
+        sel.disabled = (isolated === null);
+
+        const chosen = siblings[idx];
+        sel.innerHTML = '';
+
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = idx === 0 ? 'Add a class…' : 'Add another…';
+        sel.appendChild(none);
+
+        manifest.forEach(function(g) {
+          const gd = allGrades[g.id];
+          if (!gd) return;
+          const group = document.createElement('optgroup');
+          group.label = g.label;
+          let added = false;
+
+          Object.keys(gd.classes).forEach(function(k) {
+            // exclude the isolated class, and whatever the other dropdown holds
+            if (g.id === currentGradeId && k === isolated) return;
+            const takenElsewhere = siblings.some(function(s, i) {
+              return i !== idx && s.gradeId === g.id && s.key === k;
+            });
+            if (takenElsewhere) return;
+
+            const opt = document.createElement('option');
+            opt.value = g.id + '|' + k;
+            opt.textContent = gd.classes[k].label;
+            if (chosen && chosen.gradeId === g.id && chosen.key === k) opt.selected = true;
+            group.appendChild(opt);
+            added = true;
+          });
+
+          if (added) sel.appendChild(group);
+        });
+
+        if (chosen) {
+          sel.classList.add('chosen');
+          sel.style.backgroundColor = SIBLING_COLOURS[idx];
+        } else {
+          sel.classList.remove('chosen');
+          sel.style.backgroundColor = '';
+        }
+      });
+    }
+
+    function refreshPills() {
+      Object.keys(pills).forEach(function(k) {
+        const on = (isolated === null) || (isolated === k);
+        pills[k].setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
     function buildFilter() {
-      if (!gradeData) return;
+      const gd = allGrades[currentGradeId];
+      if (!gd) return;
       filterEl.innerHTML = '';
 
       const label = document.createElement('span');
@@ -251,17 +366,8 @@
       label.textContent = 'Only show:';
       filterEl.appendChild(label);
 
-      const pills = {};
-
-      function refreshPills() {
-        Object.keys(pills).forEach(function(k) {
-          const on = (isolated === null) || (isolated === k);
-          pills[k].setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-      }
-
-      Object.keys(gradeData.classes).forEach(function(key) {
-        const cls = gradeData.classes[key];
+      Object.keys(gd.classes).forEach(function(key) {
+        const cls = gd.classes[key];
         const pill = document.createElement('button');
         pill.className = 'class-pill';
         pill.type = 'button';
@@ -277,13 +383,16 @@
 
         pill.addEventListener('click', function() {
           if (isolated === key) {
-            isolated = null;                                   // back to showing all
-            activeClasses = new Set(Object.keys(gradeData.classes));
+            isolated = null;
+            siblings = [];              // clean reset to default
           } else {
-            isolated = key;                                    // isolate just this one
-            activeClasses = new Set([key]);
+            isolated = key;
+            siblings = siblings.filter(function(s) {
+              return !(s.gradeId === currentGradeId && s.key === key);
+            });
           }
           refreshPills();
+          populateSibSelects();
           renderSpecialists();
         });
 
@@ -291,20 +400,45 @@
         filterEl.appendChild(pill);
       });
 
+      const sibLabel = document.createElement('span');
+      sibLabel.className = 'filter-label sib-label';
+      sibLabel.textContent = 'Also show:';
+      filterEl.appendChild(sibLabel);
+
+      sibSelects = [];
+      for (let i = 0; i < 2; i++) {
+        const sel = document.createElement('select');
+        sel.className = 'sib-select';
+        sel.disabled = true;
+        sel.addEventListener('change', function() {
+          const idx = sibSelects.indexOf(sel);
+          if (!sel.value) {
+            siblings.splice(idx, 1);        // cleared → drop it (and any after)
+          } else {
+            const parts = sel.value.split('|');
+            siblings[idx] = { gradeId: parts[0], key: parts[1] };
+          }
+          populateSibSelects();
+          renderSpecialists();
+        });
+        sibSelects.push(sel);
+        filterEl.appendChild(sel);
+      }
+
+      populateSibSelects();
       filterEl.style.display = 'flex';
     }
 
     // ── Specialist rendering ───────────────────────────
     function renderSpecialists() {
       document.querySelectorAll('.specialists').forEach(el => el.remove());
-      if (!gradeData) return;
+      const selections = currentSelections();
+      if (!selections.length) return;
 
       calendar.getEvents().forEach(function(ev) {
         const match = (ev.title || '').match(/day\s*(\d+)/i);
         if (!match || !ev.start) return;
-
-        const rota = gradeData.rotation[match[1]];
-        if (!rota) return;
+        const dayNum = match[1];
 
         const cell = document.querySelector(
           '.fc-daygrid-day[data-date="' + isoLocal(ev.start) + '"] .fc-daygrid-day-events'
@@ -315,21 +449,23 @@
         wrap.className = 'specialists';
         let any = false;
 
-        Object.keys(gradeData.classes).forEach(function(key) {
-          if (!activeClasses.has(key)) return;        // hidden by filter
-          const subjects = rota[key];
+        selections.forEach(function(sel) {
+          const gd = allGrades[sel.gradeId];
+          if (!gd) return;
+          const rota = gd.rotation[dayNum];
+          if (!rota) return;
+          const subjects = rota[sel.key];
           if (!subjects || !subjects.length) return;
-          const cls = gradeData.classes[key];
 
           const row = document.createElement('div');
           row.className = 'spec-row';
 
           const dot = document.createElement('span');
           dot.className = 'spec-dot';
-          dot.style.backgroundColor = cls.colour;
+          dot.style.backgroundColor = sel.colour;
 
           const text = document.createElement('span');
-          text.textContent = cls.label + ': ' + subjects.join(', ');
+          text.textContent = sel.label + ': ' + subjects.join(', ');
 
           row.appendChild(dot);
           row.appendChild(text);
@@ -382,16 +518,29 @@
     });
     calendar.render();
 
-    // ── Grade data (silent if absent) ──────────────────
+    // ── Load data (silent on any failure) ──────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
-    if (grade && /^[0-9]+$/.test(grade)) {
-      fetch('grade' + grade + '.json?v=1')
+    if (grade && /^[A-Za-z0-9_-]+$/.test(grade)) {
+      currentGradeId = grade;
+
+      fetch('grades.json?v=1')
         .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(data) {
-          if (!data) return;
-          gradeData = data;
-          activeClasses = new Set(Object.keys(data.classes));   // all on by default
-          isolated = null;
+        .then(function(m) {
+          manifest = (m && Array.isArray(m.grades)) ? m.grades : [];
+          if (!manifest.some(function(g) { return g.id === grade; })) {
+            manifest.push({ id: grade, label: 'Grade ' + grade });
+          }
+          return Promise.all(manifest.map(function(g) {
+            const file = g.file || ('grade' + g.id + '.json');
+            return fetch(file + '?v=1')
+              .then(function(r) { return r.ok ? r.json() : null; })
+              .then(function(d) { if (d) allGrades[g.id] = d; })
+              .catch(function() { /* skip this grade */ });
+          }));
+        })
+        .then(function() {
+          manifest = manifest.filter(function(g) { return allGrades[g.id]; });
+          if (!allGrades[currentGradeId]) return;   // current grade missing → plain calendar
           buildFilter();
           renderSpecialists();
         })
