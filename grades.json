@@ -1,5 +1,9 @@
 {
   "grades": [
+    { "id": "toddlers", "label": "Toddlers", "file": "toddlers.json" },
+    { "id": "prek3", "label": "Pre-K 3", "file": "prek3.json" },
+    { "id": "prek4", "label": "Pre-K 4", "file": "prek4.json" },
+    { "id": "kg", "label": "KG", "file": "kg.json" },
     { "id": "1", "label": "Grade 1" },
     { "id": "2", "label": "Grade 2" },
     { "id": "3", "label": "Grade 3" },
