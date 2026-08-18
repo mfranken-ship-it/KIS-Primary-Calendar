@@ -216,6 +216,417 @@
     const filterEl = document.getElementById('class-filter');
 
     let gradeData = null;
+    let activeClasses = new Set();   // which class keys are currently shown
+    let isolated = null;             // class key currently isolated, or null for "all"
+
+    // ── Date helpers ───────────────────────────────────
+    const today = new Date();
+    const dow = today.getDay();                      // 0=Sun .. 6=Sat
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
+    monday.setHours(0, 0, 0, 0);
+
+    // 3 week-rows on Thursday (4) and Friday (5), otherwise 2
+    const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
+
+    function rangeFor(weeks) {
+      const end = new Date(monday);
+      end.setDate(monday.getDate() + weeks * 7);     // exclusive end
+      return { start: monday, end: end };
+    }
+
+    function isoLocal(d) {
+      return d.getFullYear() + '-' +
+             String(d.getMonth() + 1).padStart(2, '0') + '-' +
+             String(d.getDate()).padStart(2, '0');
+    }
+
+    // ── Filter pills ───────────────────────────────────
+    function buildFilter() {
+      if (!gradeData) return;
+      filterEl.innerHTML = '';
+
+      const label = document.createElement('span');
+      label.className = 'filter-label';
+      label.textContent = 'Only show:';
+      filterEl.appendChild(label);
+
+      const pills = {};
+
+      function refreshPills() {
+        Object.keys(pills).forEach(function(k) {
+          const on = (isolated === null) || (isolated === k);
+          pills[k].setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
+      Object.keys(gradeData.classes).forEach(function(key) {
+        const cls = gradeData.classes[key];
+        const pill = document.createElement('button');
+        pill.className = 'class-pill';
+        pill.type = 'button';
+        pill.setAttribute('aria-pressed', 'true');
+        pill.style.backgroundColor = cls.colour;
+
+        const dot = document.createElement('span');
+        dot.className = 'pill-dot';
+        const text = document.createElement('span');
+        text.textContent = cls.label;
+        pill.appendChild(dot);
+        pill.appendChild(text);
+
+        pill.addEventListener('click', function() {
+          if (isolated === key) {
+            isolated = null;                                   // back to showing all
+            activeClasses = new Set(Object.keys(gradeData.classes));
+          } else {
+            isolated = key;                                    // isolate just this one
+            activeClasses = new Set([key]);
+          }
+          refreshPills();
+          renderSpecialists();
+        });
+
+        pills[key] = pill;
+        filterEl.appendChild(pill);
+      });
+
+      filterEl.style.display = 'flex';
+    }
+
+    // ── Specialist rendering ───────────────────────────
+    function renderSpecialists() {
+      document.querySelectorAll('.specialists').forEach(el => el.remove());
+      if (!gradeData) return;
+
+      calendar.getEvents().forEach(function(ev) {
+        const match = (ev.title || '').match(/day\s*(\d+)/i);
+        if (!match || !ev.start) return;
+
+        const rota = gradeData.rotation[match[1]];
+        if (!rota) return;
+
+        const cell = document.querySelector(
+          '.fc-daygrid-day[data-date="' + isoLocal(ev.start) + '"] .fc-daygrid-day-events'
+        );
+        if (!cell) return;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'specialists';
+        let any = false;
+
+        Object.keys(gradeData.classes).forEach(function(key) {
+          if (!activeClasses.has(key)) return;        // hidden by filter
+          const subjects = rota[key];
+          if (!subjects || !subjects.length) return;
+          const cls = gradeData.classes[key];
+
+          const row = document.createElement('div');
+          row.className = 'spec-row';
+
+          const dot = document.createElement('span');
+          dot.className = 'spec-dot';
+          dot.style.backgroundColor = cls.colour;
+
+          const text = document.createElement('span');
+          text.textContent = cls.label + ': ' + subjects.join(', ');
+
+          row.appendChild(dot);
+          row.appendChild(text);
+          wrap.appendChild(row);
+          any = true;
+        });
+
+        if (any) cell.appendChild(wrap);
+      });
+    }
+
+    // ── Calendar ───────────────────────────────────────
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'weekGrid',
+      views: { weekGrid: { type: 'dayGrid' } },
+      visibleRange: rangeFor(baseWeeks),
+      firstDay: 1,
+      weekends: false,
+      dayHeaders: false,
+      headerToolbar: false,
+      height: 'auto',
+      eventDisplay: 'block',
+      eventClick: function(info) { info.jsEvent.preventDefault(); },
+      eventContent: function(arg) {
+        const title = arg.event.title || '';
+        const idx = title.indexOf(':');
+        const wrap = document.createElement('div');
+        if (idx === -1) {
+          wrap.textContent = title;
+        } else {
+          const num = document.createElement('span');
+          num.textContent = title.slice(0, idx);
+          const desc = document.createElement('span');
+          desc.className = 'day-desc';
+          desc.textContent = title.slice(idx + 1).trim();
+          wrap.appendChild(num);
+          wrap.appendChild(desc);
+        }
+        return { domNodes: [wrap] };
+      },
+      dayCellContent: function(arg) {
+        const weekday = arg.date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+        const day = arg.date.getDate();
+        const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
+        return { html: '<div class="cell-date">' + weekday + ' ' + day + ' ' + month + '</div>' };
+      },
+      eventsSet: function() { setTimeout(renderSpecialists, 0); },
+      googleCalendarApiKey: API_KEY,
+      events: { googleCalendarId: CALENDAR_ID }
+    });
+    calendar.render();
+
+    // ── Grade data (silent if absent) ──────────────────
+    const grade = new URLSearchParams(window.location.search).get('grade');
+    if (grade && /^[0-9]+$/.test(grade)) {
+      fetch('grade' + grade + '.json?v=1')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data) return;
+          gradeData = data;
+          activeClasses = new Set(Object.keys(data.classes));   // all on by default
+          isolated = null;
+          buildFilter();
+          renderSpecialists();
+        })
+        .catch(function() { /* silent */ });
+    }
+
+    // ── Toggle ─────────────────────────────────────────
+    toggleBtn.addEventListener('click', function() {
+      const expanded = toggleBtn.classList.toggle('expanded');
+      calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
+      calendar.refetchEvents();
+      toggleBtn.querySelector('.label').textContent =
+        expanded ? 'Show fewer weeks' : 'Show 2 more weeks';
+    });
+  });
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+  #calendar {
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+  }
+  #calendar .fc,
+  #calendar .fc * {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* ── Class filter pills ─────────────────────────── */
+  #class-filter {
+    display: none;                 /* shown only when grade data loads */
+    max-width: 900px;
+    margin: 0 auto 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  #class-filter .filter-label {
+    font-size: 14px;
+    color: #5f6368;
+    margin-right: 2px;
+  }
+  .class-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    padding: 5px 14px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .class-pill[aria-pressed="false"] {
+    background-color: #fff !important;
+    color: #80868b;
+    border-color: #dadce0;
+  }
+  .class-pill .pill-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+  .class-pill[aria-pressed="false"] .pill-dot {
+    background-color: #dadce0;
+  }
+
+  /* ── Cell structure & alignment ─────────────────── */
+  .fc-daygrid-day-frame {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+  }
+  .fc-daygrid-day-top {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .fc-daygrid-day-number {
+    display: block !important;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .fc-daygrid-day-events {
+    flex: 1 1 auto;
+    text-align: center;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  .fc-daygrid-event-harness {
+    text-align: center;
+    overflow: visible;
+  }
+
+  /* ── Date label ─────────────────────────────────── */
+  .cell-date {
+    width: 100%;
+    box-sizing: border-box;
+    height: 3em;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+    color: #444;
+    padding: 4px 0 2px;
+  }
+  .fc-day-today .cell-date { color: #1a73e8; }
+  .fc-day-today { background-color: #eaf1fd !important; }
+
+  /* ── Day pills ──────────────────────────────────── */
+  .fc-event {
+    background-color: #7986cb;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 4px;
+    text-align: center;
+    cursor: default;
+    font-size: 16px;
+  }
+  .fc-event .fc-event-title,
+  .fc-event .fc-event-main {
+    font-size: 16px;
+    font-weight: normal;
+  }
+  .fc-daygrid-event,
+  .fc-event,
+  .fc-event-main,
+  .fc-event-title {
+    white-space: normal !important;
+    overflow: visible;
+    overflow-wrap: break-word;
+  }
+  .day-desc {
+    display: block;
+    font-size: 13px;
+    line-height: 1.25;
+    margin-top: 2px;
+  }
+
+  /* ── Specialists — dot + plain text ─────────────── */
+  .specialists {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 10px 2px;
+  }
+  .spec-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 6px;
+    font-size: 15px;
+    line-height: 1.15;
+    color: #202124;
+    padding: 0 2px;
+    text-align: center;
+  }
+  .spec-dot {
+    flex: 0 0 9px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-top: 4px;
+  }
+
+  /* ── Toggle ─────────────────────────────────────── */
+  #toggle-weeks-wrap {
+    text-align: center;
+    margin-top: 12px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  #toggle-weeks {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    color: #3f51b5;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+  }
+  #toggle-weeks:hover { background-color: #eef0fb; }
+  #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
+  #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<div id="class-filter"></div>
+<div id="calendar"></div>
+<div id="toggle-weeks-wrap">
+  <button id="toggle-weeks">
+    <span class="label">Show 2 more weeks</span>
+    <span class="chevron">▾</span>
+  </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
+<script src="config.js?v=1"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const toggleBtn = document.getElementById('toggle-weeks');
+    const filterEl = document.getElementById('class-filter');
+
+    let gradeData = null;
     let activeClasses = new Set();
     let isolated = null;              // ← add this: class key currently isolated, or null
     
