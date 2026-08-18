@@ -299,7 +299,6 @@
       const lbl = document.getElementById('sib-label');
       if (lbl) lbl.style.display = (isolated === null) ? 'none' : '';
       sibSelects.forEach(function(sel, idx) {
-      sibSelects.forEach(function(sel, idx) {
         // Only show dropdown 2 once dropdown 1 has a choice
         if (idx > 0 && siblings.length < idx) {
           sel.style.display = 'none';
