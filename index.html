@@ -315,12 +315,19 @@
         none.textContent = idx === 0 ? 'Add a class…' : 'Add another…';
         sel.appendChild(none);
 
+        const groups = {};                       // heading -> optgroup element
         manifest.forEach(function(g) {
           const gd = allGrades[g.id];
           if (!gd) return;
-          const group = document.createElement('optgroup');
-          group.label = g.label;
-          let added = false;
+
+          const heading = g.group || g.label;
+          let group = groups[heading];
+          if (!group) {
+            group = document.createElement('optgroup');
+            group.label = heading;
+            groups[heading] = group;
+            sel.appendChild(group);
+          }
 
           Object.keys(gd.classes).forEach(function(k) {
             // exclude the isolated class, and whatever the other dropdown holds
@@ -335,10 +342,12 @@
             opt.textContent = gd.classes[k].label;
             if (chosen && chosen.gradeId === g.id && chosen.key === k) opt.selected = true;
             group.appendChild(opt);
-            added = true;
           });
+        });
 
-          if (added) sel.appendChild(group);
+        // remove any heading left with no options
+        Object.keys(groups).forEach(function(h) {
+          if (!groups[h].children.length) groups[h].remove();
         });
 
         if (chosen) {
