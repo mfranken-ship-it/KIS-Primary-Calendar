@@ -586,6 +586,7 @@
 <script>
   window.goatcounter = {
     endpoint: 'https://edu-assets.maartens-airquality.nl/assets/c',
+    allow_frame: true,
     path: function () {
       var g = (new URLSearchParams(location.search).get('grade') || '').toLowerCase();
       return '/weekly-update/' + (/^[a-z0-9-]{1,12}$/.test(g) ? g : 'unknown');
