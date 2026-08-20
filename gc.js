@@ -144,9 +144,9 @@
 		if (!url)
 			return warn('not counting because path callback returned null')
 
-		if (!navigator.sendBeacon(url)) {
-			// This mostly fails due to being blocked by CSP; try again with an
-			// image-based fallback.
+		// if (!navigator.sendBeacon(url)) { // replaced with: if (true) {
+		if (true) {
+			// Image retry is now the only path
 			var img = document.createElement('img')
 			img.src = url
 			img.style.position = 'absolute'  // Affect layout less.
