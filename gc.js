@@ -1,3 +1,10 @@
+// Vendored copy of GoatCounter's count.js — GoatCounter v2.7.0 (self-hosted, nuc-ff).
+// Source: https://edu-assets.maartens-airquality.nl/count.js
+//
+// LOCAL MODIFICATION: sendBeacon replaced with the built-in <img> fallback,
+// because EasyPrivacy's *$ping,3p rule blocks all third-party beacon requests.
+// Re-apply this change if you ever refresh this file from a newer GoatCounter.
+
 // GoatCounter: https://www.goatcounter.com
 // This file is released under the ISC license: https://opensource.org/licenses/ISC
 ;(function() {
