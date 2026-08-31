@@ -251,19 +251,46 @@
     const pills = {};
     let sibSelects = [];
 
-    // ── Date helpers ───────────────────────────────────
-    const today = new Date();
-    const dow = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
-    monday.setHours(0, 0, 0, 0);
+    // ── Date helpers (anchored to school time, not the device) ──
+    const SCHOOL_TZ = 'Asia/Almaty';
 
-    const baseWeeks = (dow === 4 || dow === 5) ? 3 : 2;
+    function schoolNow() {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: SCHOOL_TZ,
+        weekday: 'short',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      const p = {};
+      parts.forEach(function(x) { p[x.type] = x.value; });
+      return p;
+    }
+
+    const sp = schoolNow();
+    const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dow = WEEKDAYS.indexOf(sp.weekday);          // 0=Sun .. 6=Sat, in Almaty
+    const schoolHour = parseInt(sp.hour, 10);          // 0–23, in Almaty
+
+    // Today's date in Almaty, as local midnight so FullCalendar compares cleanly
+    const schoolToday = new Date(sp.year + '-' + sp.month + '-' + sp.day + 'T00:00:00');
+
+    // Monday of the school's current week
+    const thisMonday = new Date(schoolToday);
+    thisMonday.setDate(schoolToday.getDate() + (dow === 0 ? -6 : 1 - dow));
+
+    // Friday from 12:00 Almaty onwards, plus Sat and Sun → drop the current week
+    const dropCurrentWeek = (dow === 5 && schoolHour >= 12) || dow === 6 || dow === 0;
+
+    const startMonday = new Date(thisMonday);
+    if (dropCurrentWeek) startMonday.setDate(thisMonday.getDate() + 7);
+
+    // Thursday all day, and Friday before 12:00 → 3 rows; otherwise 2
+    const baseWeeks = (dow === 4 || (dow === 5 && schoolHour < 12)) ? 3 : 2;
 
     function rangeFor(weeks) {
-      const end = new Date(monday);
-      end.setDate(monday.getDate() + weeks * 7);
-      return { start: monday, end: end };
+      const end = new Date(startMonday);
+      end.setDate(startMonday.getDate() + weeks * 7);
+      return { start: startMonday, end: end };
     }
 
     function isoLocal(d) {
@@ -508,6 +535,7 @@
       initialView: 'weekGrid',
       views: { weekGrid: { type: 'dayGrid' } },
       visibleRange: rangeFor(baseWeeks),
+      now: schoolToday,
       firstDay: 1,
       weekends: false,
       dayHeaders: false,
