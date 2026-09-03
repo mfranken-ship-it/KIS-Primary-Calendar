@@ -254,38 +254,58 @@
     // ── Date helpers (anchored to school time, not the device) ──
     const SCHOOL_TZ = 'Asia/Almaty';
 
+    // Test hook: ?now=2026-09-04T11:58 (Almaty wall-clock). Applied as a fixed
+    // offset, so the clock still ADVANCES from that point — which is what makes
+    // the live transitions testable rather than frozen.
+    const nowParam = new URLSearchParams(location.search).get('now');
+    const CLOCK_OFFSET = nowParam
+      ? (new Date(nowParam + '+05:00').getTime() - Date.now())
+      : 0;
+
     function schoolNow() {
       const parts = new Intl.DateTimeFormat('en-GB', {
         timeZone: SCHOOL_TZ,
         weekday: 'short',
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', hourCycle: 'h23'
-      }).formatToParts(new Date());
+      }).formatToParts(new Date(Date.now() + CLOCK_OFFSET));
       const p = {};
       parts.forEach(function(x) { p[x.type] = x.value; });
       return p;
     }
 
-    const sp = schoolNow();
     const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dow = WEEKDAYS.indexOf(sp.weekday);          // 0=Sun .. 6=Sat, in Almaty
-    const schoolHour = parseInt(sp.hour, 10);          // 0–23, in Almaty
 
-    // Today's date in Almaty, as local midnight so FullCalendar compares cleanly
-    const schoolToday = new Date(sp.year + '-' + sp.month + '-' + sp.day + 'T00:00:00');
+    // Mutable — recomputed whenever the school clock may have moved on
+    let schoolToday, startMonday, baseWeeks;
 
-    // Monday of the school's current week
-    const thisMonday = new Date(schoolToday);
-    thisMonday.setDate(schoolToday.getDate() + (dow === 0 ? -6 : 1 - dow));
+    function computeSchoolState() {
+      const sp = schoolNow();
+      const dow = WEEKDAYS.indexOf(sp.weekday);   // 0=Sun .. 6=Sat, in Almaty
+      const hour = parseInt(sp.hour, 10);         // 0–23, in Almaty
 
-    // Friday from 12:00 Almaty onwards, plus Sat and Sun → drop the current week
-    const dropCurrentWeek = (dow === 5 && schoolHour >= 12) || dow === 6 || dow === 0;
+      const today = new Date(sp.year + '-' + sp.month + '-' + sp.day + 'T00:00:00');
 
-    const startMonday = new Date(thisMonday);
-    if (dropCurrentWeek) startMonday.setDate(thisMonday.getDate() + 7);
+      const thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow));
 
-    // Thursday all day, and Friday before 12:00 → 3 rows; otherwise 2
-    const baseWeeks = (dow === 4 || (dow === 5 && schoolHour < 12)) ? 3 : 2;
+      // Friday from 12:00 Almaty onwards, plus Sat and Sun → drop the current week
+      const dropCurrentWeek = (dow === 5 && hour >= 12) || dow === 6 || dow === 0;
+      const start = new Date(thisMonday);
+      if (dropCurrentWeek) start.setDate(thisMonday.getDate() + 7);
+
+      // Thursday all day, and Friday before 12:00 → 3 rows; otherwise 2
+      const weeks = (dow === 4 || (dow === 5 && hour < 12)) ? 3 : 2;
+
+      return { today: today, start: start, weeks: weeks };
+    }
+
+    (function () {
+      const s = computeSchoolState();
+      schoolToday = s.today;
+      startMonday = s.start;
+      baseWeeks = s.weeks;
+    })();
 
     function rangeFor(weeks) {
       const end = new Date(startMonday);
@@ -572,6 +592,37 @@
     });
     calendar.render();
 
+    // ── Keep the calendar in step with the school clock ────────
+    function refreshForClock() {
+      const s = computeSchoolState();
+      const dayChanged = s.today.getTime() !== schoolToday.getTime();
+      const rangeChanged = s.start.getTime() !== startMonday.getTime()
+                        || s.weeks !== baseWeeks;
+      if (!dayChanged && !rangeChanged) return;
+
+      schoolToday = s.today;
+      startMonday = s.start;
+      baseWeeks = s.weeks;
+
+      if (rangeChanged) {
+        // preserve the parent's "show 2 more weeks" choice
+        const expanded = toggleBtn.classList.contains('expanded');
+        if (dayChanged) calendar.setOption('now', schoolToday);
+        calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
+        calendar.refetchEvents();          // eventsSet → renderSpecialists
+      } else {
+        calendar.setOption('now', schoolToday);
+        setTimeout(renderSpecialists, 0);  // re-render may drop injected rows
+      }
+    }
+
+    setInterval(refreshForClock, 60000);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) refreshForClock();
+    });
+    window.addEventListener('pageshow', refreshForClock);
+    window.addEventListener('focus', refreshForClock);
+    
     // ── Load data (silent on any failure) ──────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
     if (grade && /^[A-Za-z0-9_-]+$/.test(grade)) {
