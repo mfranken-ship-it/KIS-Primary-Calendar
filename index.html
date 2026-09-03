@@ -565,7 +565,7 @@
       initialView: 'weekGrid',
       views: { weekGrid: { type: 'dayGrid' } },
       visibleRange: rangeFor(baseWeeks),
-      now: schoolToday,
+      now: schoolToday, // this does not control the red cell(!) (vestigial - might need to be removed later)
       firstDay: 1,
       weekends: false,
       dayHeaders: false,
