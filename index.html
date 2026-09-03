@@ -148,10 +148,11 @@
      does not move it), so by the next day it points at a stale cell and
      paints a second, yellow highlight.
 
-     Both rules below suppress that marker. The first clears the colour
-     variable; the second is a fallback in case FullCalendar's internals
-     change. `:not(.is-school-today)` means neither can ever fight our red
-     highlight on the one day where both selectors match.
+     applyTodayHighlight() strips .fc-day-today from the DOM outright, so
+     these rules are only a safety net covering the moment between a
+     render and that function running. `:not(.is-school-today)` means
+     they can never fight our red highlight on the one day where both
+     selectors match.
      ───────────────────────────────────────────────────────────────── */
   #calendar,
   #calendar .fc {
@@ -246,7 +247,7 @@
   #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
   #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
 </style>
-  
+
 </head>
 <body>
 
@@ -286,6 +287,8 @@
     // Test hook: ?now=2026-09-04T11:58 (Almaty wall-clock). Applied as a fixed
     // offset, so the clock still ADVANCES from that point — which is what makes
     // the live transitions testable rather than frozen.
+    // A malformed value deliberately breaks the page: a silent fall back to the
+    // real clock during a deliberate test would be misleading. Do not "fix".
     const nowParam = new URLSearchParams(location.search).get('now');
     const CLOCK_OFFSET = nowParam
       ? (new Date(nowParam + '+05:00').getTime() - Date.now())
@@ -349,6 +352,12 @@
     }
 
     function applyTodayHighlight() {
+      // FullCalendar's own marker is fixed at construction and goes stale, so
+      // strip it from the DOM rather than fight it in CSS. It is re-added on
+      // every render, and this function runs after each one.
+      document.querySelectorAll('.fc-day-today').forEach(function (el) {
+        el.classList.remove('fc-day-today');
+      });
       document.querySelectorAll('.is-school-today').forEach(function (el) {
         el.classList.remove('is-school-today');
       });
@@ -388,10 +397,10 @@
     function populateSibSelects() {
       const lbl = document.getElementById('sib-label');
       if (lbl) lbl.style.display = (isolated === null) ? 'none' : '';
-      
+
       const brk = document.getElementById('filter-break');
       if (brk) brk.style.display = (isolated === null) ? 'none' : '';
-      
+
       sibSelects.forEach(function(sel, idx) {
         // Only show dropdown 2 once dropdown 1 has a choice
         if (idx > 0 && siblings.length < idx) {
@@ -595,8 +604,9 @@
       views: { weekGrid: { type: 'dayGrid' } },
       visibleRange: rangeFor(baseWeeks),
       now: schoolToday, // keeps FullCalendar's clock on Almaty rather than the
-                        // device — do not remove. Its own .fc-day-today marker
-                        // is suppressed in CSS; see the Today section there.
+                        // device — do not remove. Its .fc-day-today marker is
+                        // stripped by applyTodayHighlight(); see the Today
+                        // section in the CSS.
       firstDay: 1,
       weekends: false,
       dayHeaders: false,
@@ -627,10 +637,12 @@
         const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
         return { html: '<div class="cell-date">' + weekday + ' ' + day + ' ' + month + '</div>' };
       },
-        eventsSet: function() { setTimeout(function () {
-        renderSpecialists();
-        applyTodayHighlight();
-      }, 0); },
+      eventsSet: function() {
+        setTimeout(function () {
+          renderSpecialists();
+          applyTodayHighlight();
+        }, 0);
+      },
       googleCalendarApiKey: API_KEY,
       events: { googleCalendarId: CALENDAR_ID }
     });
@@ -654,7 +666,10 @@
         const expanded = toggleBtn.classList.contains('expanded');
         calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
         calendar.refetchEvents();          // eventsSet → renderSpecialists + highlight
-         applyTodayHighlight(); 
+        // The grid is rebuilt by setOption, so tag the new cells afterwards
+        // rather than synchronously. Also covers a failed event fetch, where
+        // eventsSet may never fire.
+        setTimeout(applyTodayHighlight, 0);
       } else {
         applyTodayHighlight();
       }
@@ -666,7 +681,7 @@
     });
     window.addEventListener('pageshow', refreshForClock);
     window.addEventListener('focus', refreshForClock);
-    
+
     // ── Load data (silent on any failure) ──────────────
     const grade = new URLSearchParams(window.location.search).get('grade');
     if (grade && /^[A-Za-z0-9_-]+$/.test(grade)) {
