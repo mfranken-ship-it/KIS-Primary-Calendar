@@ -136,6 +136,11 @@
   .is-school-today .cell-date { color: #cc0000; }
   .is-school-today { background-color: #ffe6e6 !important; }
 
+  /* FullCalendar's own today-highlight tracks the device clock — we use
+     .is-school-today (Almaty) instead, so switch its built-in one off */
+  #calendar .fc { --fc-today-bg-color: transparent; }
+  
+
   /* ── Day pills ──────────────────────────────────── */
   .fc-event {
     background-color: #7986cb;
