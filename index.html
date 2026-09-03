@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+
 <style>
   html, body {
     margin: 0;
@@ -36,6 +37,10 @@
     margin-right: 2px;
   }
   #class-filter .sib-label { margin-left: 10px; }
+  #class-filter .filter-break {
+    flex-basis: 100%;
+    height: 0;
+  }
   .class-pill {
     display: inline-flex;
     align-items: center;
@@ -49,10 +54,6 @@
     color: #fff;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  }
-    #class-filter .filter-break {
-    flex-basis: 100%;
-    height: 0;
   }
   .class-pill[aria-pressed="false"] {
     background-color: #fff !important;
@@ -133,13 +134,35 @@
     color: #444;
     padding: 4px 0 2px;
   }
+
+  /* ── Today ──────────────────────────────────────────────────────────
+     The red highlight is ours: .is-school-today is applied by
+     applyTodayHighlight() from the Almaty clock, and re-applied whenever
+     the school day rolls over — so it moves without a page reload.
+
+     FullCalendar has its own marker, .fc-day-today, driven by the `now`
+     option. `now: schoolToday` is set in the JS config and must STAY —
+     without it FullCalendar falls back to the viewer's device clock,
+     which is wrong for parents outside Kazakhstan. But it is fixed at
+     construction and cannot be updated afterwards (setOption('now', …)
+     does not move it), so by the next day it points at a stale cell and
+     paints a second, yellow highlight.
+
+     Both rules below suppress that marker. The first clears the colour
+     variable; the second is a fallback in case FullCalendar's internals
+     change. `:not(.is-school-today)` means neither can ever fight our red
+     highlight on the one day where both selectors match.
+     ───────────────────────────────────────────────────────────────── */
+  #calendar,
+  #calendar .fc {
+    --fc-today-bg-color: transparent;
+  }
+  #calendar .fc-day-today:not(.is-school-today) {
+    background-color: transparent !important;
+  }
+
   .is-school-today .cell-date { color: #cc0000; }
   .is-school-today { background-color: #ffe6e6 !important; }
-
-  /* FullCalendar's own today-highlight tracks the device clock — we use
-     .is-school-today (Almaty) instead, so switch its built-in one off */
-  #calendar .fc { --fc-today-bg-color: transparent; }
-  
 
   /* ── Day pills ──────────────────────────────────── */
   .fc-event {
@@ -156,73 +179,7 @@
     font-size: 16px;
     font-weight: normal;
   }
-  .fc-daygrid-event,
-  .fc-event,
-  .fc-event-main,
-  .fc-event-title {
-    white-space: normal !important;
-    overflow: visible;
-    overflow-wrap: break-word;
-  }
-  .day-desc {
-    display: block;
-    font-size: 13px;
-    line-height: 1.25;
-    margin-top: 2px;
-  }
-
-  /* ── Specialists ────────────────────────────────── */
-  .specialists {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin: 10px 2px;
-  }
-  .spec-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 6px;
-    font-size: 15px;
-    line-height: 1.15;
-    color: #202124;
-    padding: 0 2px;
-    text-align: center;
-  }
-  .spec-dot {
-    flex: 0 0 9px;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    margin-top: 4px;
-  }
-
-  /* ── Toggle ─────────────────────────────────────── */
-  #toggle-weeks-wrap {
-    text-align: center;
-    margin-top: 12px;
-    font-family: Arial, Helvetica, sans-serif;
-  }
-  #toggle-weeks {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: none;
-    background: none;
-    color: #3f51b5;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 4px;
-    transition: background-color 0.15s ease;
-  }
-  #toggle-weeks:hover { background-color: #eef0fb; }
-  #toggle-weeks .chevron { display: inline-block; transition: transform 0.2s ease; }
-  #toggle-weeks.expanded .chevron { transform: rotate(180deg); }
-</style>
+  
 </head>
 <body>
 
