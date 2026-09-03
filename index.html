@@ -527,7 +527,9 @@
       initialView: 'weekGrid',
       views: { weekGrid: { type: 'dayGrid' } },
       visibleRange: rangeFor(baseWeeks),
-      now: schoolToday, // this does not control the red cell(!) (vestigial - might need to be removed later)
+      now: schoolToday, // keeps FullCalendar's clock on Almaty rather than the
+                        // device — do not remove. Its own .fc-day-today marker
+                        // is suppressed in CSS; see the Today section there.
       firstDay: 1,
       weekends: false,
       dayHeaders: false,
