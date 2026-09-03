@@ -133,8 +133,8 @@
     color: #444;
     padding: 4px 0 2px;
   }
-  .fc-day-today .cell-date { color: #cc0000; }
-  .fc-day-today { background-color: #ffe6e6 !important; }
+  .is-school-today .cell-date { color: #cc0000; }
+  .is-school-today { background-color: #ffe6e6 !important; }
 
   /* ── Day pills ──────────────────────────────────── */
   .fc-event {
@@ -317,6 +317,16 @@
       return d.getFullYear() + '-' +
              String(d.getMonth() + 1).padStart(2, '0') + '-' +
              String(d.getDate()).padStart(2, '0');
+    }
+
+    function applyTodayHighlight() {
+      document.querySelectorAll('.is-school-today').forEach(function (el) {
+        el.classList.remove('is-school-today');
+      });
+      const cell = document.querySelector(
+        '.fc-daygrid-day[data-date="' + isoLocal(schoolToday) + '"]'
+      );
+      if (cell) cell.classList.add('is-school-today');
     }
 
     // ── Which classes are currently displayed ──────────
@@ -586,11 +596,15 @@
         const month = arg.date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
         return { html: '<div class="cell-date">' + weekday + ' ' + day + ' ' + month + '</div>' };
       },
-      eventsSet: function() { setTimeout(renderSpecialists, 0); },
+        eventsSet: function() { setTimeout(function () {
+        renderSpecialists();
+        applyTodayHighlight();
+      }, 0); },
       googleCalendarApiKey: API_KEY,
       events: { googleCalendarId: CALENDAR_ID }
     });
     calendar.render();
+    applyTodayHighlight();
 
     // ── Keep the calendar in step with the school clock ────────
     function refreshForClock() {
@@ -607,12 +621,10 @@
       if (rangeChanged) {
         // preserve the parent's "show 2 more weeks" choice
         const expanded = toggleBtn.classList.contains('expanded');
-        if (dayChanged) calendar.setOption('now', schoolToday);
         calendar.setOption('visibleRange', rangeFor(baseWeeks + (expanded ? 2 : 0)));
-        calendar.refetchEvents();          // eventsSet → renderSpecialists
+        calendar.refetchEvents();          // eventsSet → renderSpecialists + highlight
       } else {
-        calendar.setOption('now', schoolToday);
-        setTimeout(renderSpecialists, 0);  // re-render may drop injected rows
+        applyTodayHighlight();
       }
     }
 
